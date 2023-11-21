@@ -1,0 +1,164 @@
+const express = require('express');
+const fs = require('fs'); 
+const mongoose = require("mongoose");
+//const users = require("./MOCK_DATA.json"); //importing data
+
+const app = express();
+const PORT = 8000;
+
+//connecting mongoose
+mongoose
+    .connect('mongodb://127.0.0.1:27017/youtube-app-1')  //copied the url got from mongosh command in cmd promt
+    .then(()=>console.log("MongoDB Connected"))
+    .catch((err)=>console.log("Mongo Error",err));
+
+
+//schema
+const userSchema = new mongoose.Schema({
+    firstName:{
+        type:String,
+        required:true, //there should be a first name
+    },
+    lastName:{
+        type:String, //not neccessary that there should be a last name
+    },
+    email:{
+        type:String,
+        required:true,
+        unique: true, //email should be unique for all users
+    },
+    jobTitle:{
+        type:String,
+    },
+    gender:{
+        type:String,
+    }
+
+}, {timestamps:true}); //adding timestamps
+
+//model
+const User = mongoose.model("user", userSchema); //"user" inside the bracket is the name for the model
+
+
+
+
+app.use(express.urlencoded({extended:false})); // Middleware - pluggin it puts the data we give in postman to the dataset
+
+app.use((req,res,next)=>{
+    fs.appendFile(
+        "log.txt",
+        `\n${Date.now()} : ${req.method}:${req.path}`,
+        (err,data) =>{
+            next();
+        }
+    );
+});
+
+app.get('/api/users', async(req,res)=>{ //if api then json file is exported and if /users only then html
+    const allDbUsers = await User.find({});      //GET/users - list all the users
+    return res.json(allDbUsers);
+});
+
+/*app.get('/users', async(req,res)=>{ //making html 
+    
+    const allDbUsers = await user.find({}); //find is empty because we are including all users
+    const html = `
+    <ul>
+        ${allDbUsers
+            .map((user) => `<li>${user.firstName}-${user.email}</li>`)
+            .join("")}
+    <ul/>
+    `;
+    res.send(html);
+});*/
+
+app.get('/users', async (req, res) => {
+    try {
+        const allDbUsers = await User.find({});
+        const html = `
+        <ul>
+            ${allDbUsers
+                .map((user) => `<li>${user.firstName}-${user.email}</li>`)
+                .join("")}
+        <ul/>
+        `;
+        res.send(html);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+
+// since path is same we route get put and delete
+app
+    .route("/api/users/:id")
+    .get(async(req,res) => { //so here :id can be anything
+
+        const user = await User.findById(req.params.id);
+        if(!user) return res.status(404).json({error:"user not found"});
+        return res.json(user);
+
+    })
+    .patch(async(req,res)=>{
+        
+        // getId stores the Id from the given Parameters in the URL.
+        await User.findByIdAndUpdate(req.params.id, {lastName:"Changed"}); //here we are hardcoding the the changed surname as "Changed"
+        return res.json({status:"Success"});
+
+    })
+    .delete(async(req,res)=>{
+        
+        await User.findByIdAndDelete(req.params.id)
+        return res.json({status: "Success"});
+    });
+
+app.post('/api/users' , async(req,res)=>{
+    //todo : create new user
+    const body = req.body; //
+
+    if(
+        !body|| !body.first_name || !body.last_name || !body.email || !body.gender || !body.job_title
+    ){
+        return res.status(400).json({msg:"All fields are req..."});
+    }
+    
+    /*users.push({...body, id: users.length+1}); // pushing the new login into our data set and inceasing the id by 1 
+    fs.writeFile('./MOCK_DATA.json', JSON.stringify(users),(err,data)=>{
+        return res.status(201).json({satus:"success",id:users.length});
+    });*/
+    //console.log("Body",body);
+
+    //after connecting mongo await creates a user
+    const result = await User.create({
+        firstName: body.first_name,
+        lastName: body.last_name,
+        email: body.email,
+        gender:body.gender,
+        jobTitle:body.job_title,
+    });
+
+    console.log('result ',result);
+    return res.status(201).json({msg:"success"});
+     
+});
+
+//by default the requests are GET    
+
+
+
+/*app.patch("/api/users/:id",(req,res)=>{
+    //to do :edit the user with id
+    return res.json({status:"pending"});
+});
+
+app.delete("/api/users/:id",(req,res)=>{
+    //to do :edit the user with id
+    return res.json({status:"pending"});
+});*/
+
+
+
+
+
+app.listen(PORT, () => console.log(`Server Started at PORT ${PORT}`));

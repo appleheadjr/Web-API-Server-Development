@@ -1,0 +1,15 @@
+Design a rest api - JSON
+
+GET/user - list all users
+GET/users - html document reader
+GET/api/users - list all users JSOn - done //making a hybrid server
+GET/users/1 - get the user with id 1
+GET/user/2 - get user with id 2
+
+Dynamic path parameters
+GET/api/user/:id  - :id ->variable
+POST/users - create new user
+
+PATCH/user/1 - edit thw user with id 1
+
+Delete/users/1 - delete the user with id 2
